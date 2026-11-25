@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>calendar</title>
+    <link rel="stylesheet" href="/static/calendar.css?v=25">
+</head>
+<body>
+    <div class="layout is-guest">
+        <aside class="sidebar">
+            <div class="profile" id="userProfileCard" title="View and edit profile">
+                <div class="avatar" id="userAvatar">?</div>
+                <div class="profile-info">
+                    <h3 id="profileName">Guest</h3>
+                    <span class="role-badge" id="profileRole" style="display: none;">manager</span>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <button type="button" class="nav-item active" data-view="schedule">schedule</button>
+                <button type="button" class="nav-item" data-view="rooms">office rooms</button>
+                <button type="button" class="nav-item" data-view="groups">groups</button>
+            </nav>
+
+            <div class="sidebar-auth">
+                <div id="authLoggedIn" class="auth-section" style="display: none;">
+                    <button type="button" id="openProfileBtn" class="profile-edit-btn">Edit Profile</button>
+                    <button id="logoutBtn" class="logout-btn">Log out</button>
+                </div>
+
+                <div id="authLoggedOut" class="auth-section">
+                    <!-- SIGN IN FORM -->
+                    <form id="loginForm" class="login-form">
+                        <div class="form-title">Sign in</div>
+                        <input type="text" id="loginUsername" placeholder="Username" required class="auth-input">
+                        <input type="password" id="loginPassword" placeholder="Password" required class="auth-input">
+                        <button type="submit" class="login-btn">Log in</button>
+                        <div id="loginError" class="auth-error" style="display: none;"></div>
+                        <div class="auth-switch">
+                            <span>No account?</span>
+                            <button type="button" id="showRegisterBtn" class="auth-switch-btn">Sign up</button>
+                        </div>
+                    </form>
+
+                    <!-- SIGN UP FORM -->
+                    <form id="registerForm" class="login-form" style="display: none;">
+                        <div class="form-title">Sign up</div>
+                        <div class="form-row-2col">
+                            <input type="text" id="regName" placeholder="Name" required class="auth-input">
+                            <input type="text" id="regSurname" placeholder="Surname" required class="auth-input">
+                        </div>
+                        <input type="text" id="regUsername" placeholder="Username" required class="auth-input">
+                        <input type="email" id="regEmail" placeholder="Email" required class="auth-input">
+                        <input type="password" id="regPassword" placeholder="Password (min 8 chars)" minlength="8" required class="auth-input">
+                        <button type="submit" class="login-btn">Create Account</button>
+                        <div id="registerError" class="auth-error" style="display: none;"></div>
+                        <div class="auth-switch">
+                            <span>Have account?</span>
+                            <button type="button" id="showLoginBtn" class="auth-switch-btn">Sign in</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </aside>
+        <main class="main-content">
+            <!-- VIEW: WEEKLY SCHEDULE -->
+            <div id="viewSchedule" class="tab-view active">
+                <div class="content-header">
+                    <div class="schedule-header-left">
+                        <h2 id="scheduleHeader">My schedule</h2>
+                        <div class="schedule-toggle-group">
+                            <button type="button" id="toggleMyScheduleBtn" class="schedule-toggle-btn active">My schedule</button>
+                            <button type="button" id="toggleGlobalScheduleBtn" class="schedule-toggle-btn">Global</button>
+                        </div>
+                    </div>
+
+                    <div class="week-nav-bar">
+                        <div class="week-nav-buttons">
+                            <a href="/calendar?week_start={{ prev_week_str }}" class="week-nav-btn" title="Previous week">Previous</a>
+                            <a href="/calendar?week_start={{ current_week_str }}" class="week-nav-btn today-btn {% if is_current_week %}active{% endif %}">Today</a>
+                            <a href="/calendar?week_start={{ next_week_str }}" class="week-nav-btn" title="Next week">Next</a>
+                        </div>
+                        <span class="week-range-text">{{ week_range_label }}</span>
+                    </div>
+
+                    <button type="button" id="openCreateBtn" class="new-event-btn">+ New event</button>
+                </div>
+
+                <div class="timetable-grid" id="timetableGrid" data-current-monday="{{ current_monday_str }}" data-is-current-week="{{ 'true' if is_current_week else 'false' }}">
+
+                    <div class="header-row">
+                        <div class="header-cell corner"></div>
+                        {% for hour in hours %}
+                            <div class="header-cell hour">{{ hour }}</div>
+                        {% endfor %}
+                    </div>
+
+                    {% for day in days %}
+                        {% set day_evs = day_events_map[day.date_iso] %}
+                        {% set num_tracks = day_evs[0].total_tracks if day_evs else 1 %}
+                        <div class="day-row {% if day.is_today %}is-today{% endif %}">
+                            <div class="day-cell">
+                                <span class="day-name">{{ day.name }}</span>
+                                <span class="day-date">{{ day.date_str }}</span>
+                            </div>
+
+                            <div class="day-timeline" style="--track-count: {{ num_tracks }};">
+                                <div class="time-slots-bg">
+                                    {% for hour in hours %}
+                                        <div class="time-slot" data-day="{{ day.code }}" data-date="{{ day.date_iso }}" data-time="{{ hour }}"></div>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="events-layer">
+                                    {% for ev in day_evs %}
+                                        <div class="event-card"
+                                             style="left: calc({{ ev.left_pct }}% + 2px); width: calc({{ ev.width_pct }}% - 4px); --track-idx: {{ ev.track_index }};"
+                                             data-id="{{ ev.id }}"
+                                             data-title="{{ ev.title }}"
+                                             data-description="{{ ev.description or '' }}"
+                                             data-room="{{ ev.location.office_room if ev.location else 'Online' }}"
+                                             data-location-id="{{ ev.location.id if ev.location else '' }}"
+                                             data-group-id="{{ ev.group.id if ev.group else '' }}"
+                                             data-group-name="{{ ev.group.name if ev.group else '' }}"
+                                             data-creator="{{ ev.creator.name }} {{ ev.creator.surname }}"
+                                             data-creator-id="{{ ev.creator.id }}"
+                                             data-participant-ids="{% for p in ev.participants %}{{ p.user.id }},{% endfor %}"
+                                             data-start="{{ ev.start_time.strftime('%H:%M') }}"
+                                             data-end="{{ ev.end_time.strftime('%H:%M') }}"
+                                             data-start-iso="{{ ev.start_time.strftime('%Y-%m-%dT%H:%M') }}"
+                                             data-end-iso="{{ ev.end_time.strftime('%Y-%m-%dT%H:%M') }}"
+                                             data-date="{{ ev.start_time.strftime('%d.%m.%Y') }}">
+                                            <div class="event-title">{{ ev.title }}</div>
+                                            <div class="event-meta-line">
+                                                <span class="event-time">{{ ev.start_time.strftime('%H:%M') }} - {{ ev.end_time.strftime('%H:%M') }}</span>
+                                                <span class="event-room">{{ ev.location.office_room if ev.location else "Online" }}</span>
+                                            </div>
+                                            <div class="event-participants-data" style="display: none;">
+                                                {% for p in ev.participants %}
+                                                    <div data-name="{{ p.user.name }} {{ p.user.surname }}" data-user-id="{{ p.user.id }}" data-status="{{ p.status }}"></div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- VIEW: OFFICE ROOMS -->
+            <div id="viewRooms" class="tab-view" style="display: none;">
+                <div class="content-header">
+                    <h2>Office rooms</h2>
+                    <button type="button" id="openAddRoomBtn" class="new-event-btn">+ Add room</button>
+                </div>
+
+                <div id="roomsGuestNotice" class="guest-notice-box" style="display: none;">
+                    Sign in using the sidebar to view and manage office rooms.
+                </div>
+
+                <div id="roomsContainer" class="rooms-container">
+                    <table class="rooms-table" id="roomsTable">
+                        <thead>
+                            <tr>
+                                <th>Room name</th>
+                                <th>Capacity</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roomsTableBody">
+                            <!-- populated by JS -->
+                        </tbody>
+                    </table>
+                    <div id="roomsEmptyState" class="rooms-empty" style="display: none;">
+                        No office rooms added yet.
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: GROUPS -->
+            <div id="viewGroups" class="tab-view" style="display: none;">
+                <div class="content-header">
+                    <h2>Groups</h2>
+                    <button type="button" id="openAddGroupBtn" class="new-event-btn">+ Add group</button>
+                </div>
+
+                <div id="groupsGuestNotice" class="guest-notice-box" style="display: none;">
+                    Sign in using the sidebar to view and manage groups.
+                </div>
+
+                <div id="groupsContainer" class="rooms-container">
+                    <table class="rooms-table" id="groupsTable">
+                        <thead>
+                            <tr>
+                                <th>Group name</th>
+                                <th>Description</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="groupsTableBody">
+                            <!-- populated by JS -->
+                        </tbody>
+                    </table>
+                    <div id="groupsEmptyState" class="rooms-empty" style="display: none;">
+                        No groups added yet.
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="popoverOverlay" class="popover-overlay"></div>
+
+    <div id="eventPopover" class="event-popover">
+        <div class="popover-header">
+            <div id="popoverTitle" class="popover-title">Event Title</div>
+            <button type="button" id="popoverCloseBtn" class="popover-close-btn">&times;</button>
+        </div>
+
+        <div id="popoverTime" class="popover-time">10:00 – 12:00</div>
+
+        <div class="popover-meta">
+            <span id="popoverRoom">Location: ...</span>
+            <span id="popoverGroup" style="display: none;">Group: ...</span>
+            <span id="popoverCreator">Organizer: ...</span>
+        </div>
+
+        <div id="popoverDesc" class="popover-desc">No description.</div>
+
+        <div class="popover-participants-box">
+            <div class="popover-participants-title">Invited participants:</div>
+            <ul id="popoverParticipantsList" class="popover-participants-list"></ul>
+        </div>
+
+        <div id="popoverActions" class="popover-actions" style="display: none;">
+            <button type="button" id="joinEventBtn" class="popover-action-btn join-btn" style="display: none;">Join event</button>
+            <button type="button" id="leaveEventBtn" class="popover-action-btn leave-btn" style="display: none;">Leave event</button>
+            <button type="button" id="editEventBtn" class="popover-action-btn edit-btn" style="display: none;">Edit</button>
+            <button type="button" id="deleteEventBtn" class="popover-action-btn delete-btn" style="display: none;">Delete</button>
+        </div>
+        <div id="popoverError" class="auth-error" style="display: none; margin: 8px 12px 4px 12px;"></div>
+    </div>
+
+    <div id="createModalOverlay" class="modal-overlay"></div>
+
+    <div id="createEventModal" class="event-modal">
+        <div class="modal-header">
+            <div class="modal-title">New Event</div>
+            <button type="button" id="closeCreateModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <form id="createEventForm" class="modal-form">
+            <div class="form-group">
+                <label for="createTitle">Title</label>
+                <input type="text" id="createTitle" placeholder="Event title" required class="modal-input">
+            </div>
+
+            <div class="form-group">
+                <label for="createDesc">Description</label>
+                <textarea id="createDesc" placeholder="Meeting details (optional)" rows="2" class="modal-textarea"></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="createLocation">Office room</label>
+                    <select id="createLocation" class="modal-select">
+                        <option value="">Online / No room</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="createGroup">Group</label>
+                    <select id="createGroup" class="modal-select">
+                        <option value="">None (Individual)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="createStartTime">Start time</label>
+                    <input type="datetime-local" id="createStartTime" required class="modal-input">
+                </div>
+                <div class="form-group">
+                    <label for="createEndTime">End time</label>
+                    <input type="datetime-local" id="createEndTime" required class="modal-input">
+                </div>
+            </div>
+
+            <div class="form-group checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="createNotify">
+                    <span>Notify group members via email</span>
+                </label>
+            </div>
+
+            <div id="createError" class="auth-error" style="display: none;"></div>
+
+            <div class="modal-actions">
+                <button type="button" id="cancelCreateBtn" class="btn-secondary">Cancel</button>
+                <button type="submit" id="submitCreateBtn" class="btn-primary">Create Event</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="editEventModal" class="event-modal">
+        <div class="modal-header">
+            <div class="modal-title">Edit Event</div>
+            <button type="button" id="closeEditModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <form id="editEventForm" class="modal-form">
+            <div class="form-group">
+                <label for="editTitle">Title</label>
+                <input type="text" id="editTitle" placeholder="Event title" required class="modal-input">
+            </div>
+
+            <div class="form-group">
+                <label for="editDesc">Description</label>
+                <textarea id="editDesc" placeholder="Meeting details (optional)" rows="2" class="modal-textarea"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="editLocation">Office room</label>
+                <select id="editLocation" class="modal-select">
+                    <option value="0">Online / No room</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editStartTime">Start time</label>
+                    <input type="datetime-local" id="editStartTime" required class="modal-input">
+                </div>
+                <div class="form-group">
+                    <label for="editEndTime">End time</label>
+                    <input type="datetime-local" id="editEndTime" required class="modal-input">
+                </div>
+            </div>
+
+            <div id="editError" class="auth-error" style="display: none;"></div>
+
+            <div class="modal-actions">
+                <button type="button" id="cancelEditBtn" class="btn-secondary">Cancel</button>
+                <button type="submit" id="submitEditBtn" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="addRoomModal" class="event-modal">
+        <div class="modal-header">
+            <div class="modal-title">New Office Room</div>
+            <button type="button" id="closeAddRoomModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <form id="addRoomForm" class="modal-form">
+            <div class="form-group">
+                <label for="roomName">Room name</label>
+                <input type="text" id="roomName" placeholder="e.g. Conference Room A" required class="modal-input">
+            </div>
+            <div class="form-group">
+                <label for="roomOccupancy">Max capacity</label>
+                <input type="number" id="roomOccupancy" min="1" max="1000" placeholder="e.g. 15" required class="modal-input">
+            </div>
+            <div id="addRoomError" class="auth-error" style="display: none;"></div>
+            <div class="modal-actions">
+                <button type="button" id="cancelAddRoomBtn" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Create Room</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="editRoomModal" class="event-modal">
+        <div class="modal-header">
+            <div class="modal-title">Edit Office Room</div>
+            <button type="button" id="closeEditRoomModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <form id="editRoomForm" class="modal-form">
+            <div class="form-group">
+                <label for="editRoomName">Room name</label>
+                <input type="text" id="editRoomName" placeholder="e.g. Conference Room A" required class="modal-input">
+            </div>
+            <div class="form-group">
+                <label for="editRoomOccupancy">Max capacity</label>
+                <input type="number" id="editRoomOccupancy" min="1" max="1000" placeholder="e.g. 15" required class="modal-input">
+            </div>
+            <div id="editRoomError" class="auth-error" style="display: none;"></div>
+            <div class="modal-actions">
+                <button type="button" id="cancelEditRoomBtn" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="addGroupModal" class="event-modal">
+        <div class="modal-header">
+            <div class="modal-title">New Group</div>
+            <button type="button" id="closeAddGroupModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <form id="addGroupForm" class="modal-form">
+            <div class="form-group">
+                <label for="groupName">Group name</label>
+                <input type="text" id="groupName" placeholder="e.g. Marketing Team" required class="modal-input">
+            </div>
+            <div class="form-group">
+                <label for="groupDesc">Description</label>
+                <textarea id="groupDesc" placeholder="Group purpose (optional)" rows="2" class="modal-textarea"></textarea>
+            </div>
+            <div id="addGroupError" class="auth-error" style="display: none;"></div>
+            <div class="modal-actions">
+                <button type="button" id="cancelAddGroupBtn" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Create Group</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="editGroupModal" class="event-modal">
+        <div class="modal-header">
+            <div class="modal-title">Edit Group</div>
+            <button type="button" id="closeEditGroupModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <form id="editGroupForm" class="modal-form">
+            <div class="form-group">
+                <label for="editGroupName">Group name</label>
+                <input type="text" id="editGroupName" placeholder="e.g. Marketing Team" required class="modal-input">
+            </div>
+            <div class="form-group">
+                <label for="editGroupDesc">Description</label>
+                <textarea id="editGroupDesc" placeholder="Group purpose (optional)" rows="2" class="modal-textarea"></textarea>
+            </div>
+            <div id="editGroupError" class="auth-error" style="display: none;"></div>
+            <div class="modal-actions">
+                <button type="button" id="cancelEditGroupBtn" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="groupMembersModal" class="event-modal" style="width: 500px;">
+        <div class="modal-header">
+            <div id="groupMembersModalTitle" class="modal-title">Group Members</div>
+            <button type="button" id="closeGroupMembersModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-form">
+            <div id="groupAddMemberBox" class="group-add-member-row" style="display: none;">
+                <select id="groupUserSelect" class="modal-select">
+                    <option value="">Select a user to add...</option>
+                </select>
+                <button type="button" id="groupAddUserBtn" class="btn-primary" style="padding: 7px 14px; white-space: nowrap;">Add Member</button>
+            </div>
+            <div id="groupMembersError" class="auth-error" style="display: none;"></div>
+
+            <div class="group-members-list-container">
+                <ul id="groupMembersList" class="group-members-list"></ul>
+                <div id="groupMembersEmpty" class="rooms-empty" style="display: none; padding: 20px;">
+                    No members in this group yet.
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="closeGroupMembersBtn" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFILE MODAL -->
+    <div id="profileModal" class="event-modal profile-modal">
+        <div class="modal-header">
+            <div class="modal-title">Employee Profile</div>
+            <button type="button" id="closeProfileModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <form id="profileForm" class="modal-form">
+            <div class="profile-overview">
+                <div class="profile-overview-avatar" id="profileModalAvatar">U</div>
+                <div class="profile-overview-meta">
+                    <div class="profile-overview-username" id="profileModalUsername">@username</div>
+                    <div class="profile-overview-badges">
+                        <span class="role-badge" id="profileModalRole">employee</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>My groups</label>
+                <div id="profileGroupsList" class="profile-groups-tags">
+                    <span class="profile-group-tag">All</span>
+                </div>
+            </div>
+
+            <hr class="profile-divider">
+
+            <div class="form-row-2col">
+                <div class="form-group">
+                    <label for="profileFirstName">First name</label>
+                    <input type="text" id="profileFirstName" required class="modal-input" placeholder="First name">
+                </div>
+                <div class="form-group">
+                    <label for="profileLastName">Last name</label>
+                    <input type="text" id="profileLastName" required class="modal-input" placeholder="Last name">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="profileInputEmail">Email address</label>
+                <input type="email" id="profileInputEmail" required class="modal-input" placeholder="employee@company.com">
+            </div>
+
+            <div class="profile-password-section">
+                <div class="profile-section-title">Change Password (optional)</div>
+                <div class="form-group">
+                    <label for="profileCurrentPassword">Current password</label>
+                    <input type="password" id="profileCurrentPassword" autocomplete="current-password" placeholder="Leave empty to keep unchanged" class="modal-input">
+                </div>
+                <div class="form-group">
+                    <label for="profileNewPassword">New password</label>
+                    <input type="password" id="profileNewPassword" autocomplete="new-password" minlength="8" placeholder="Minimum 8 characters" class="modal-input">
+                </div>
+            </div>
+
+            <div id="profileError" class="auth-error" style="display: none;"></div>
+            <div id="profileSuccess" class="auth-success" style="display: none;"></div>
+
+            <div class="modal-actions">
+                <button type="button" id="cancelProfileBtn" class="btn-secondary">Cancel</button>
+                <button type="submit" id="saveProfileBtn" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="/static/calendar.js?v=18"></script>
+</body>
+</html>

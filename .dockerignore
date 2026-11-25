@@ -1,0 +1,13 @@
+.git
+.gitignore
+.venv
+.venv_windows
+__pycache__
+*.py[cod]
+.pytest_cache
+.idea
+.env
+*.db
+*.sqlite*
+*.docx
+tests
