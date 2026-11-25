@@ -68,8 +68,8 @@ def reset_and_seed():
         location=loc1.id,
         group=all_grp.id,
         creator=hex_user.id,
-        start_time=datetime(2026, 11, 9, 10, 0),
-        end_time=datetime(2026, 11, 9, 12, 0),
+        start_time=datetime(2026, 11, 25, 10, 0),
+        end_time=datetime(2026, 11, 25, 12, 0),
         send_email_notification=False
     )
     ev2 = Event.create(
@@ -78,8 +78,8 @@ def reset_and_seed():
         location=loc2.id,
         group=hr_grp.id,
         creator=hex_user.id,
-        start_time=datetime(2026, 11, 10, 11, 0),
-        end_time=datetime(2026, 11, 10, 12, 30),
+        start_time=datetime(2026, 11, 26, 11, 0),
+        end_time=datetime(2026, 11, 26, 12, 30),
         send_email_notification=False
     )
     ev3 = Event.create(
@@ -88,8 +88,8 @@ def reset_and_seed():
         location=loc3.id,
         group=hq_grp.id,
         creator=hex_user.id,
-        start_time=datetime(2026, 11, 11, 14, 0),
-        end_time=datetime(2026, 11, 11, 17, 0),
+        start_time=datetime(2026, 11, 27, 14, 0),
+        end_time=datetime(2026, 11, 27, 17, 0),
         send_email_notification=False
     )
     ev4 = Event.create(
@@ -98,8 +98,8 @@ def reset_and_seed():
         location=None,
         group=eng_grp.id,
         creator=hex_user.id,
-        start_time=datetime(2026, 11, 12, 15, 0),
-        end_time=datetime(2026, 11, 12, 16, 0),
+        start_time=datetime(2026, 11, 28, 15, 0),
+        end_time=datetime(2026, 11, 28, 16, 0),
         send_email_notification=False
     )
     ev5 = Event.create(
@@ -108,8 +108,8 @@ def reset_and_seed():
         location=loc2.id,
         group=mgr_grp.id,
         creator=hex_user.id,
-        start_time=datetime(2026, 11, 13, 10, 0),
-        end_time=datetime(2026, 11, 13, 11, 30),
+        start_time=datetime(2026, 11, 29, 10, 0),
+        end_time=datetime(2026, 11, 29, 11, 30),
         send_email_notification=False
     )
     ev6 = Event.create(
@@ -118,8 +118,8 @@ def reset_and_seed():
         location=loc1.id,
         group=all_grp.id,
         creator=hex_user.id,
-        start_time=datetime(2026, 11, 13, 16, 0),
-        end_time=datetime(2026, 11, 13, 18, 0),
+        start_time=datetime(2026, 11, 30, 16, 0),
+        end_time=datetime(2026, 11, 30, 18, 0),
         send_email_notification=False
     )
 
