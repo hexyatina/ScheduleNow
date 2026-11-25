@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     SENDER_EMAIL: str = ""
     SENDER_PASSWORD: str = ""
 
+    DATABASE_URL: str = ""
+    DB_SSLMODE: str = ""
     DB_NAME: str = "event_db"
     DB_USER: str = "postgres"
     DB_PASSWORD: str = "postgres"

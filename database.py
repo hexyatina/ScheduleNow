@@ -1,5 +1,7 @@
+import os
 import time
 from datetime import datetime, timedelta
+from urllib.parse import parse_qs, urlparse
 from peewee import (
     BooleanField,
     CharField,
@@ -14,13 +16,37 @@ from peewee import (
 )
 from config import settings
 
-db = PostgresqlDatabase(
-    settings.DB_NAME,
-    user=settings.DB_USER,
-    password=settings.DB_PASSWORD,
-    host=settings.DB_HOST,
-    port=settings.DB_PORT,
-)
+
+def _build_db() -> PostgresqlDatabase:
+    if settings.DATABASE_URL:
+        parsed = urlparse(settings.DATABASE_URL)
+        query = parse_qs(parsed.query)
+        sslmode = query.get("sslmode", [None])[0] or settings.DB_SSLMODE
+        if not sslmode and os.getenv("DYNO"):
+            sslmode = "require"
+
+        kwargs = {
+            "user": parsed.username,
+            "password": parsed.password,
+            "host": parsed.hostname,
+            "port": parsed.port or 5432,
+        }
+        if sslmode:
+            kwargs["sslmode"] = sslmode
+        return PostgresqlDatabase(parsed.path.lstrip("/"), **kwargs)
+
+    kwargs = {
+        "user": settings.DB_USER,
+        "password": settings.DB_PASSWORD,
+        "host": settings.DB_HOST,
+        "port": settings.DB_PORT,
+    }
+    if settings.DB_SSLMODE:
+        kwargs["sslmode"] = settings.DB_SSLMODE
+    return PostgresqlDatabase(settings.DB_NAME, **kwargs)
+
+
+db = _build_db()
 
 
 def get_default_end_time():
