@@ -1,4 +1,3 @@
-import os
 import pytest
 from unittest.mock import MagicMock
 from peewee import SqliteDatabase
@@ -9,33 +8,31 @@ database.init_db = lambda: None
 
 import main
 import routers.events as events_router
+import routers.locations as locations_router
 import services.email_service as email_service
 from auth import create_access_token, hash_password
 from database import User, Location, Group, GroupMember, Event, Participant
 
-TEST_DB_PATH = "/tmp/test_event_mgmt.db"
 MODELS = [User, Location, Group, GroupMember, Event, Participant]
 
 
 @pytest.fixture(autouse=True)
-def test_db():
-    if os.path.exists(TEST_DB_PATH):
-        try:
-            os.remove(TEST_DB_PATH)
-        except OSError:
-            pass
+def test_db(tmp_path):
+    db_path = tmp_path / "test_event_mgmt.db"
 
-    db = SqliteDatabase(TEST_DB_PATH, pragmas={"foreign_keys": 1})
+    db = SqliteDatabase(str(db_path), pragmas={"foreign_keys": 1})
     db.bind(MODELS, bind_refs=False, bind_backrefs=False)
     db.connect(reuse_if_open=True)
     db.create_tables(MODELS)
 
     orig_db = database.db
     orig_events_db = events_router.db
+    orig_locations_db = locations_router.db
     orig_main_db = main.db
 
     database.db = db
     events_router.db = db
+    locations_router.db = db
     main.db = db
 
     yield db
@@ -45,13 +42,8 @@ def test_db():
 
     database.db = orig_db
     events_router.db = orig_events_db
+    locations_router.db = orig_locations_db
     main.db = orig_main_db
-
-    if os.path.exists(TEST_DB_PATH):
-        try:
-            os.remove(TEST_DB_PATH)
-        except OSError:
-            pass
 
 
 @pytest.fixture
@@ -110,4 +102,3 @@ def superadmin_user():
     token = create_access_token(user.id, user.role)
     headers = {"Authorization": f"Bearer {token}"}
     return {"user": user, "token": token, "headers": headers}
-

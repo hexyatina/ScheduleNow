@@ -173,7 +173,7 @@ def test_update_my_profile_change_password(client, employee_user):
         "/users/me",
         headers=employee_user["headers"],
         json={
-            "current_password": "password123",
+            "current_password": "secret123",
             "new_password": "brandnewpassword999"
         }
     )
