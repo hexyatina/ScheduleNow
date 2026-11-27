@@ -54,3 +54,6 @@ cp .env.example .env
 # Set DB_HOST=localhost in .env
 uvicorn main:app --reload
 ```
+
+## Or try and see for yourself by going into this website:
+https://schedule-now.app
